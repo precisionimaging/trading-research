@@ -49,11 +49,25 @@ uv sync
 3. Click "Download" to export CSV
 4. Run: `uv run prepare.py --source tradingview --data SPY_data.csv --ticker SPY`
 
-**Option B: Interactive Brokers**
+**Option B: Interactive Brokers (Recommended for live data)**
+1. Download IB Gateway or TWS from interactivebrokers.com
+2. Login to your IBKR account (use paper trading for testing)
+3. Enable API: Configure → API → Settings
+4. Set port: 7497 (live) or 7498 (paper)
+5. Run:
 ```bash
-uv run prepare.py --source ibkr --ticker AAPL --period 1y
+# Paper trading (recommended)
+uv run prepare.py --source ibkr --ticker SPY --period 5y --port 7498
+
+# Live trading (use with caution)
+uv run prepare.py --source ibkr --ticker AAPL --period 2y --port 7497
 ```
-Note: Requires IBKR API integration (placeholder implementation).
+
+Additional IBKR parameters:
+- `--period`: 1d, 1w, 1m, 1y, 2y, 5y
+- `--bar-size`: 1 min, 5 mins, 1 hour, 1 day
+- `--port`: 7497 (live), 7498 (paper)
+- `--host`: IB Gateway host (default: 127.0.0.1)
 
 ### 3. Manually run a single backtest
 
@@ -136,10 +150,12 @@ This is just a starting point. The agent will experiment with:
 - Multiple timeframes (1 day, 1 hour, 5 min, etc.)
 
 ### Interactive Brokers
-- Professional data quality
+- Professional data quality (institutional-grade)
 - Real-time and historical data
+- Uses ib_insync library for easy integration
 - Requires API setup with IB Gateway or TWS
-- Note: Placeholder implementation, requires integration work
+- Supports live and paper trading accounts
+- Wide range of instruments (stocks, ETFs, futures, forex, options)
 
 ## Hardware Requirements
 

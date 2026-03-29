@@ -3,8 +3,17 @@ Data fetching and backtesting engine for trading strategy research.
 Supports TradingView data export and Interactive Brokers API.
 
 Usage:
+    # TradingView (CSV export)
     python prepare.py --source tradingview --data SPY_data.csv
+
+    # IBKR (live account, default port 7497)
     python prepare.py --source ibkr --ticker AAPL --period 1y
+
+    # IBKR (paper trading, port 7498)
+    python prepare.py --source ibkr --ticker SPY --period 5y --port 7498
+
+    # IBKR with custom settings
+    python prepare.py --source ibkr --ticker GLD --period 2y --bar-size "1 hour" --port 7498
 
 Data is stored in ~/.cache/trading-research/
 """
@@ -121,26 +130,129 @@ def fetch_tradingview_data(csv_path: str, ticker: str) -> MarketData:
     return data
 
 
-def fetch_ibkr_data(ticker: str, period: str = '1y', bar_size: str = '1 day') -> MarketData:
+def fetch_ibkr_data(ticker: str, period: str = '1y', bar_size: str = '1 day',
+                    host: str = '127.0.0.1', port: int = 7497,
+                    client_id: int = 1) -> MarketData:
     """
-    Fetch data from Interactive Brokers.
+    Fetch data from Interactive Brokers using ib_insync.
 
-    Note: Requires IBKR API connection. This is a placeholder.
-    Implement with ib_insync or similar IBKR Python library.
+    Requires:
+    - IB Gateway or TWS running
+    - API enabled in IB Gateway/TWS (Configure → API → Settings)
+    - Active connection to IBKR account (paper trading recommended for testing)
 
     Args:
-        ticker: Stock/ETF ticker (e.g., 'AAPL', 'SPY')
-        period: Time period ('1d', '1w', '1m', '1y')
-        bar_size: Bar size ('1 min', '5 mins', '1 hour', '1 day')
-    """
-    print(f"Fetching {ticker} data from IBKR ({period}, {bar_size})...")
+        ticker: Stock/ETF ticker (e.g., 'AAPL', 'SPY', 'GLD')
+        period: Time period ('1d', '1w', '1m', '1y', '2y', '5y')
+        bar_size: Bar size ('1 min', '5 mins', '15 mins', '1 hour', '1 day')
+        host: IB Gateway/TWS host (default localhost)
+        port: IB Gateway/TWS port (7497 for live, 7498 for paper trading)
+        client_id: Unique client ID (1-9999)
 
-    # TODO: Implement IBKR API integration
-    # For now, return placeholder with error
-    raise NotImplementedError(
-        "IBKR data fetching not implemented. Use TradingView export or implement IBKR API.\n"
-        "Recommended: Use 'ib_insync' library with IB Gateway/TWS."
-    )
+    Returns:
+        MarketData object with OHLCV data
+
+    Raises:
+        ConnectionError: If cannot connect to IB Gateway/TWS
+        ValueError: If invalid ticker or parameters
+    """
+    try:
+        from ib_insync import IB, Stock, util
+    except ImportError:
+        raise ImportError(
+            "ib_insync not installed. Install with: uv pip install ib-insync\n"
+            "Or add to pyproject.toml dependencies."
+        )
+
+    print(f"Connecting to IBKR at {host}:{port}...")
+    print(f"Fetching {ticker} data (period: {period}, bar size: {bar_size})...")
+
+    # Create IB instance and connect
+    ib = IB()
+    try:
+        ib.connect(host, port, clientId=client_id)
+        if not ib.isConnected():
+            raise ConnectionError(f"Failed to connect to IBKR at {host}:{port}")
+
+        print(f"Connected! Client ID: {client_id}")
+
+    except Exception as e:
+        raise ConnectionError(
+            f"Cannot connect to IBKR. Please ensure:\n"
+            f"  1. IB Gateway or TWS is running\n"
+            f"  2. API is enabled in Configure → API → Settings\n"
+            f"  3. Socket clients are allowed on port {port}\n\n"
+            f"Error: {e}"
+        )
+
+    # Map period to IBKR format
+    duration_map = {
+        '1d': '1 D',
+        '1w': '1 W',
+        '1m': '1 M',
+        '2m': '2 M',
+        '3m': '3 M',
+        '6m': '6 M',
+        '1y': '1 Y',
+        '2y': '2 Y',
+        '5y': '5 Y',
+        '10y': '10 Y',
+    }
+
+    if period not in duration_map:
+        raise ValueError(
+            f"Invalid period: {period}. Use one of: {', '.join(duration_map.keys())}"
+        )
+
+    # Define stock contract
+    try:
+        contract = Stock(ticker, 'SMART', 'USD')
+        ib.qualifyContracts(contract)
+        print(f"Contract qualified: {contract}")
+    except Exception as e:
+        raise ValueError(f"Invalid ticker '{ticker}': {e}")
+
+    # Request historical data
+    try:
+        bars = ib.reqHistoricalData(
+            contract,
+            endDateTime='',  # Current time
+            durationStr=duration_map[period],
+            barSizeSetting=bar_size,
+            whatToShow='TRADES',  # Use MIDPOINT for forex, TRADES for stocks
+            useRTH=True,  # Regular trading hours only
+            formatDate=1,  # Format as datetime string
+        )
+
+        print(f"Received {len(bars)} bars from IBKR")
+
+    except Exception as e:
+        ib.disconnect()
+        raise RuntimeError(f"Failed to fetch historical data from IBKR: {e}")
+
+    # Convert to DataFrame
+    if not bars:
+        ib.disconnect()
+        raise ValueError(f"No data received for {ticker}")
+
+    try:
+        df = util.df(bars)
+        df = df[['open', 'high', 'low', 'close', 'volume']]
+        df.sort_index(inplace=True)
+
+        print(f"Date range: {df.index[0]} to {df.index[-1]}")
+        print(f"Total bars: {len(df)}")
+
+    except Exception as e:
+        ib.disconnect()
+        raise RuntimeError(f"Failed to convert bars to DataFrame: {e}")
+
+    # Disconnect
+    ib.disconnect()
+    print("Disconnected from IBKR")
+
+    # Convert to MarketData
+    return MarketData.from_dataframe(df, ticker)
 
 
 def save_market_data(data: MarketData, filename: str):
@@ -383,7 +495,16 @@ def main():
                         help='Data source')
     parser.add_argument('--ticker', type=str, help='Ticker symbol (for IBKR)')
     parser.add_argument('--data', type=str, help='CSV file path (for TradingView)')
-    parser.add_argument('--period', type=str, default='1y', help='Time period (for IBKR)')
+    parser.add_argument('--period', type=str, default='1y',
+                        help='Time period: 1d, 1w, 1m, 1y, 2y, 5y (for IBKR)')
+    parser.add_argument('--bar-size', type=str, default='1 day',
+                        help='Bar size: 1 min, 5 mins, 1 hour, 1 day (for IBKR)')
+    parser.add_argument('--host', type=str, default='127.0.0.1',
+                        help='IB Gateway/TWS host (default: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=7497,
+                        help='IB Gateway/TWS port (default: 7497 live, 7498 paper)')
+    parser.add_argument('--client-id', type=int, default=1,
+                        help='Unique client ID (default: 1)')
     parser.add_argument('--output', type=str, help='Output filename for cached data')
 
     args = parser.parse_args()
@@ -401,7 +522,14 @@ def main():
             print("Error: --ticker required for IBKR source")
             return 1
 
-        data = fetch_ibkr_data(args.ticker, args.period)
+        data = fetch_ibkr_data(
+            ticker=args.ticker,
+            period=args.period,
+            bar_size=args.bar_size,
+            host=args.host,
+            port=args.port,
+            client_id=args.client_id,
+        )
 
     else:
         print(f"Error: Unknown source {args.source}")
