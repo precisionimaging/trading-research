@@ -107,7 +107,7 @@ class MarketData:
             low=df['low'].values,
             close=df['close'].values,
             volume=df['volume'].values,
-            df.index.astype(np.int64) // 10**9,  # Unix timestamp
+            datetime=df.index.astype(np.int64) // 10**9,  # Unix timestamp
             ticker=ticker,
         )
 
