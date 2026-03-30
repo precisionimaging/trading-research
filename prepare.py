@@ -236,8 +236,17 @@ def fetch_ibkr_data(ticker: str, period: str = '1y', bar_size: str = '1 day',
         raise ValueError(f"No data received for {ticker}")
 
     try:
-        df = util.df(bars)
-        df = df[['open', 'high', 'low', 'close', 'volume']]
+        # Create DataFrame with proper datetime index
+        df = pd.DataFrame({
+            'open': [b.open for b in bars],
+            'high': [b.high for b in bars],
+            'low': [b.low for b in bars],
+            'close': [b.close for b in bars],
+            'volume': [b.volume for b in bars],
+        }, index=[b.date for b in bars])
+
+        # Ensure index is datetime
+        df.index = pd.to_datetime(df.index)
         df.sort_index(inplace=True)
 
         print(f"Date range: {df.index[0]} to {df.index[-1]}")
