@@ -104,6 +104,9 @@ class MarketData:
                     raise ValueError(f"Missing required column: {col}")
 
         # Convert datetime index to Unix timestamp (seconds)
+        # Handle timezone-aware datetime
+        if df.index.tz is not None:
+            df.index = df.index.tz_localize(None)
         datetime_index = df.index.astype('datetime64[ns]').astype(np.int64) // 10**9
 
         return MarketData(
@@ -162,7 +165,7 @@ def fetch_ibkr_data(ticker: str, period: str = '1y', bar_size: str = '1 day',
         ValueError: If invalid ticker or parameters
     """
     try:
-        from ib_insync import IB, Stock, util
+        from ib_insync import IB, Stock, Index, util
     except ImportError:
         raise ImportError(
             "ib_insync not installed. Install with: uv pip install ib-insync\n"
@@ -209,11 +212,33 @@ def fetch_ibkr_data(ticker: str, period: str = '1y', bar_size: str = '1 day',
             f"Invalid period: {period}. Use one of: {', '.join(duration_map.keys())}"
         )
 
-    # Define stock contract
+    # Define stock or index contract
     try:
-        contract = Stock(ticker, 'SMART', 'USD')
-        ib.qualifyContracts(contract)
-        print(f"Contract qualified: {contract}")
+        # Detect indices (common US indices)
+        indices = ['SPX', 'NDX', 'DJI', 'RUT', 'VIX', 'COMP']
+        
+        if ticker.upper() in indices:
+            # It's an index
+            contract = Index(ticker, 'SMART', 'USD')
+            ib.qualifyContracts(contract)
+            print(f"Contract qualified: {contract}")
+        else:
+            # It's a stock - detect Canadian exchanges
+            if ticker.endswith('.TO') or ticker.endswith('.T'):
+                currency = 'CAD'
+                exchange = 'SMART'  # SMART will auto-route to TSX
+            elif ticker.endswith('.V') or ticker.endswith('.VX'):
+                currency = 'CAD'
+                # For TSX-V, try stripping suffix and using SMART
+                ticker = ticker.replace('.V', '').replace('.VX', '')
+                exchange = 'SMART'
+            else:
+                currency = 'USD'
+                exchange = 'SMART'
+
+            contract = Stock(ticker, exchange, currency)
+            ib.qualifyContracts(contract)
+            print(f"Contract qualified: {contract}")
     except Exception as e:
         raise ValueError(f"Invalid ticker '{ticker}': {e}")
 
