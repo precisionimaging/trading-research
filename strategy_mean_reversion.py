@@ -150,15 +150,27 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     # Entry Conditions
     # ----------------------------------------------------------------------------
 
-    # Mean reversion to Bollinger Bands (more adaptive to volatility)
-    # Long when price is at or below lower band (oversold)
-    # Short when price is at or above upper band (overbought)
+    # Mean reversion based on short-term momentum
+    # If price moved X% in N bars, bet on reversal
 
-    # Simple BB touch (no RSI confirmation for now)
-    if current_price <= lower[current_bar]:
-        return 1  # Go long (expect pullback up to middle band)
-    elif current_price >= upper[current_bar]:
-        return -1  # Go short (expect pullback down to middle band)
+    # Configuration
+    REVERSAL_PERIOD = 10  # Look back N bars
+    REVERSAL_THRESHOLD = 0.005  # X% move = 0.5%
+
+    if current_bar < REVERSAL_PERIOD:
+        return 0
+
+    # Calculate recent price change
+    past_price = close[current_bar - REVERSAL_PERIOD]
+    price_change = (current_price - past_price) / past_price
+
+    # Long: Price dropped significantly, expect bounce
+    if price_change < -REVERSAL_THRESHOLD:
+        return 1
+
+    # Short: Price rose significantly, expect pullback
+    elif price_change > REVERSAL_THRESHOLD:
+        return -1
 
     # ---------------------------------------------------------------------------
     # Exit Conditions (handled by backtest engine automatically)
