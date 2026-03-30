@@ -153,13 +153,13 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     # Mean reversion based on short-term momentum with RSI confirmation
     # If price moved X% in N bars, bet on reversal
 
-    # Configuration (experiment 6: add RSI filter)
+    # Configuration (experiment 7: tighten RSI filter)
     REVERSAL_PERIOD = 20  # Look back N bars
     REVERSAL_THRESHOLD = 0.003  # X% move = 0.3%
 
     # RSI filter: avoid trading when RSI is extreme (strong momentum likely to continue)
-    RSI_EXTREME_HIGH = 75  # Don't short if RSI is very high
-    RSI_EXTREME_LOW = 25  # Don't long if RSI is very low
+    RSI_EXTREME_HIGH = 80  # Don't short if RSI is very high (was 75)
+    RSI_EXTREME_LOW = 20  # Don't long if RSI is very low (was 25)
 
     if current_bar < REVERSAL_PERIOD:
         return 0
