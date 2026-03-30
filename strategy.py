@@ -171,6 +171,12 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     # --- ENTRY LOGIC ---
     # Conditions for entering trades
 
+    # Check if indicators are valid (not NaN)
+    if (np.isnan(sma_fast[current_bar]) or np.isnan(sma_slow[current_bar]) or
+        np.isnan(rsi[current_bar]) or np.isnan(macd_hist[current_bar]) or
+        np.isnan(bb_middle[current_bar])):
+        return 0  # Flat if any indicator is NaN
+
     # Long entry conditions
     long_conditions = [
         sma_fast[current_bar] > sma_slow[current_bar],  # Trend following
