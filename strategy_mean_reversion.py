@@ -153,9 +153,9 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     # Mean reversion based on short-term momentum
     # If price moved X% in N bars, bet on reversal
 
-    # Configuration
-    REVERSAL_PERIOD = 10  # Look back N bars
-    REVERSAL_THRESHOLD = 0.005  # X% move = 0.5%
+    # Configuration (experiment 4: longer period, smaller threshold)
+    REVERSAL_PERIOD = 20  # Look back N bars (was 10)
+    REVERSAL_THRESHOLD = 0.003  # X% move = 0.3% (was 0.5%)
 
     if current_bar < REVERSAL_PERIOD:
         return 0
