@@ -75,13 +75,22 @@ class MarketData:
 
     def to_dataframe(self) -> pd.DataFrame:
         """Convert to pandas DataFrame."""
+        # Debug
+        print(f"to_dataframe: datetime shape = {self.datetime.shape}")
+        print(f"to_dataframe: datetime[0] = {self.datetime[0]}")
+        print(f"to_dataframe: datetime[-1] = {self.datetime[-1]}")
+
+        index = pd.to_datetime(self.datetime, unit='s')
+        print(f"to_dataframe: converted index[0] = {index[0]}")
+        print(f"to_dataframe: converted index[-1] = {index[-1]}")
+
         return pd.DataFrame({
             'open': self.open,
             'high': self.high,
             'low': self.low,
             'close': self.close,
             'volume': self.volume,
-        }, index=pd.to_datetime(self.datetime))
+        }, index=index)
 
     @staticmethod
     def from_dataframe(df: pd.DataFrame, ticker: str) -> 'MarketData':
@@ -557,6 +566,11 @@ def main():
     print(df.describe())
     print(f"\nDate range: {df.index[0]} to {df.index[-1]}")
     print(f"Total bars: {len(df)}")
+
+    # Debug: check raw datetime values
+    print(f"\nDebug: datetime[0] = {data.datetime[0]}")
+    print(f"Debug: datetime[-1] = {data.datetime[-1]}")
+    print(f"Debug: datetime dtype = {data.datetime.dtype}")
 
     return 0
 
