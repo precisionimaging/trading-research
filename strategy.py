@@ -50,8 +50,11 @@ MAX_DAILY_LOSS = 0.05  # Stop trading if daily loss > 5%
 # ----------------------------------------------------------------------------
 
 def calculate_sma(data: np.ndarray, period: int) -> np.ndarray:
-    """Simple Moving Average."""
-    return np.convolve(data, np.ones(period) / period, mode='valid')
+    """Simple Moving Average. Returns array same length as input."""
+    sma = np.convolve(data, np.ones(period) / period, mode='valid')
+    # Pad with NaN to match original length
+    pad_width = period - 1
+    return np.concatenate([np.full(pad_width, np.nan), sma])
 
 
 def calculate_ema(data: np.ndarray, period: int) -> np.ndarray:
