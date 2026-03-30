@@ -158,13 +158,13 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     # Long when price is significantly below VWAP (oversold)
     # Short when price is significantly above VWAP (overbought)
 
-    # Configuration: Deviation thresholds
-    VWAP_OVERBOUGHT = 0.003   # 0.3% above VWAP = overbought
-    VWAP_OVERSOLD = -0.003    # -0.3% below VWAP = oversold
+    # Configuration: Deviation thresholds (experiment 1: tighter thresholds)
+    VWAP_OVERBOUGHT = 0.005   # 0.5% above VWAP = overbought (was 0.3%)
+    VWAP_OVERSOLD = -0.005    # -0.5% below VWAP = oversold (was -0.3%)
 
     # RSI confirmation
-    RSI_OVERBOUGHT = 70
-    RSI_OVERSOLD = 30
+    RSI_OVERBOUGHT = 75  # Tighter: 75 (was 70)
+    RSI_OVERSOLD = 25   # Tighter: 25 (was 30)
 
     # Long conditions: Price below VWAP + RSI oversold
     long_conditions = [
