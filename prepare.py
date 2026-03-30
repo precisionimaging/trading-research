@@ -101,13 +101,16 @@ class MarketData:
                 else:
                     raise ValueError(f"Missing required column: {col}")
 
+        # Convert datetime index to Unix timestamp (seconds)
+        datetime_index = df.index.astype('datetime64[ns]').astype(np.int64) // 10**9
+
         return MarketData(
             open=df['open'].values,
             high=df['high'].values,
             low=df['low'].values,
             close=df['close'].values,
             volume=df['volume'].values,
-            datetime=df.index.astype(np.int64) // 10**9,  # Unix timestamp
+            datetime=datetime_index,  # Unix timestamp in seconds
             ticker=ticker,
         )
 
