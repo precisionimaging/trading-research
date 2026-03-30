@@ -137,54 +137,28 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     volume = data.volume[:current_bar+1]
 
     # Calculate indicators
-    vwap = calculate_vwap(close, volume)
+    vwap = calculate_vwap(close, volume)  # Keep for reference, but using BB now
     rsi = calculate_rsi(close, 14)
     upper, middle, lower = calculate_bollinger_bands(close, 20, 2.0)
     atr = calculate_atr(high, low, close, 14)
 
     # Current values
     current_price = close[current_bar]
-    current_vwap = vwap[current_bar]
     current_rsi = rsi[current_bar]
-
-    # Calculate deviation from VWAP
-    deviation = (current_price - current_vwap) / current_vwap
 
     # ---------------------------------------------------------------------------
     # Entry Conditions
     # ----------------------------------------------------------------------------
 
-    # Mean reversion to VWAP
-    # Long when price is significantly below VWAP (oversold)
-    # Short when price is significantly above VWAP (overbought)
+    # Mean reversion to Bollinger Bands (more adaptive to volatility)
+    # Long when price is at or below lower band (oversold)
+    # Short when price is at or above upper band (overbought)
 
-    # Configuration: Deviation thresholds (experiment 1: tighter thresholds)
-    VWAP_OVERBOUGHT = 0.005   # 0.5% above VWAP = overbought (was 0.3%)
-    VWAP_OVERSOLD = -0.005    # -0.5% below VWAP = oversold (was -0.3%)
-
-    # RSI confirmation
-    RSI_OVERBOUGHT = 75  # Tighter: 75 (was 70)
-    RSI_OVERSOLD = 25   # Tighter: 25 (was 30)
-
-    # Long conditions: Price below VWAP + RSI oversold
-    long_conditions = [
-        deviation < VWAP_OVERSOLD,           # Price extended below VWAP
-        current_rsi < RSI_OVERSOLD,         # RSI confirms oversold
-        current_rsi > 20,                   # Not extreme oversold
-    ]
-
-    # Short conditions: Price above VWAP + RSI overbought
-    short_conditions = [
-        deviation > VWAP_OVERBOUGHT,        # Price extended above VWAP
-        current_rsi > RSI_OVERBOUGHT,       # RSI confirms overbought
-        current_rsi < 80,                   # Not extreme overbought
-    ]
-
-    # Generate signals
-    if all(long_conditions):
-        return 1  # Go long (expect pullback up to VWAP)
-    elif all(short_conditions):
-        return -1  # Go short (expect pullback down to VWAP)
+    # Simple BB touch (no RSI confirmation for now)
+    if current_price <= lower[current_bar]:
+        return 1  # Go long (expect pullback up to middle band)
+    elif current_price >= upper[current_bar]:
+        return -1  # Go short (expect pullback down to middle band)
 
     # ---------------------------------------------------------------------------
     # Exit Conditions (handled by backtest engine automatically)
@@ -192,7 +166,7 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
 
     # Note: The backtest engine in prepare.py will automatically exit
     # when the signal changes. For mean reversion, we rely on signal
-    # flipping when price returns to VWAP range.
+    # flipping when price returns to middle band range.
 
     return 0  # No position
 
