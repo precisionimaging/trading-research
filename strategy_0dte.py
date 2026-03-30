@@ -376,19 +376,19 @@ def strategy_func(data: MarketData, current_bar: int) -> int:
     # ---------------------------------------------------------------------------
 
     # RSI filter - avoid overextended
-    if rsi[current_bar] > 70:
+    if rsi[current_bar] > 75:  # More conservative threshold
         return -1  # Overbought, call credit spread
 
-    if rsi[current_bar] < 30:
+    if rsi[current_bar] < 25:  # More conservative threshold
         return 1  # Oversold, put credit spread
 
     # VWAP relative positioning
-    if current_price > vwap_level * 1.002:  # 0.2% above VWAP
+    if current_price > vwap_level * 1.003:  # 0.3% above VWAP (more selective)
         # Price extended above VWAP
         if rsi[current_bar] > 60:
             return -1  # Call credit spread (expect pullback)
 
-    elif current_price < vwap_level * 0.998:  # 0.2% below VWAP
+    elif current_price < vwap_level * 0.997:  # 0.3% below VWAP (more selective)
         # Price extended below VWAP
         if rsi[current_bar] < 40:
             return 1  # Put credit spread (expect bounce)
