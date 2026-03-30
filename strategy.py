@@ -97,7 +97,18 @@ def calculate_macd(data: np.ndarray, fast: int = 12, slow: int = 26, signal: int
 def calculate_bollinger_bands(data: np.ndarray, period: int = 20, std_dev: float = 2.0) -> tuple:
     """Bollinger Bands. Returns (upper, middle, lower)."""
     middle = calculate_sma(data, period)
-    std = np.array([np.std(data[i-period:i]) if i >= period else 0 for i in range(len(data))])
+
+    # Calculate rolling standard deviation using convolve (much faster than list comprehension)
+    # Variance = E[X^2] - (E[X])^2
+    squares = data ** 2
+    mean_sq = np.convolve(squares, np.ones(period) / period, mode='valid')
+    mean = np.convolve(data, np.ones(period) / period, mode='valid')
+    var = mean_sq - mean ** 2
+    std = np.sqrt(np.maximum(var, 0))  # Ensure non-negative
+
+    # Pad to match original length
+    std = np.concatenate([np.zeros(period - 1), std])
+
     upper = middle + std_dev * std
     lower = middle - std_dev * std
     return upper, middle, lower
